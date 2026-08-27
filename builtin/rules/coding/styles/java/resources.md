@@ -12,7 +12,7 @@
 
 ## Rule
 
-Java resources implementing `AutoCloseable` must be managed with try-with-resources when their lifetime is local to the operation.
+A resource implementing `AutoCloseable` must be managed with try-with-resources when its ownership and lifetime are local to the operation.
 
 ## Exceptions
 
@@ -20,12 +20,18 @@ Another lifecycle mechanism may be used when resource ownership intentionally ex
 
 ## Rationale
 
-Try-with-resources makes cleanup deterministic and preserves exception semantics.
+Try-with-resources guarantees deterministic closing and handles exception propagation correctly.
 
 ## Sources
 
-IASI
+Oracle Java Tutorials - The try-with-resources Statement: https://docs.oracle.com/javase/tutorial/essential/exceptions/tryResourceClose.html
 
 ## Examples
 
-None.
+Preferred:
+
+```java
+try (BufferedReader reader = Files.newBufferedReader(path)) {
+    return reader.readLine();
+}
+```
