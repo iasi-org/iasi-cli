@@ -75,3 +75,6 @@ _cache/
 
 # Codex
 .codex*
+
+# Compiled CLI binaries
+/bin/
