@@ -39,6 +39,13 @@ func ConfigureOutput(options OutputOptions) {
 	outputOptions = options
 }
 
+func Direct(format string, args ...any) {
+	if outputOptions.Silent {
+		return
+	}
+	fmt.Fprintf(os.Stdout, format, args...)
+}
+
 func Debug(format string, args ...any) {
 	writeVisibleMessage(os.Stdout, visibilityDebug, levelDebug, format, args...)
 }

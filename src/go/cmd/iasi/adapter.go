@@ -18,6 +18,7 @@ type Adapter struct {
 	Dir       string
 	Overwrite bool
 	List      bool
+	Help      bool
 }
 
 var adapterSignature = cli.Signature[Adapter]{
@@ -26,6 +27,7 @@ var adapterSignature = cli.Signature[Adapter]{
 		{Name: "dir"},
 		{Name: "overwrite", Default: "false"},
 		{Name: "list", Option: "--list"},
+		{Name: "help", Option: "--help"},
 	},
 	Build: buildAdapter,
 }
@@ -45,6 +47,11 @@ func runAdapter(args []string) {
 
 	if err := validateAdapter(adapter); err != nil {
 		fatal(err)
+	}
+
+	if adapter.Help {
+		printAdapterHelp()
+		return
 	}
 
 	if adapter.List {
@@ -84,10 +91,25 @@ func buildAdapter(values map[string]string) (Adapter, error) {
 		return Adapter{}, fmt.Errorf("invalid list value %q", values["list"])
 	}
 
-	return Adapter{Agent: values["agent"], Dir: values["dir"], Overwrite: overwrite, List: list}, nil
+	help, err := strconv.ParseBool(values["help"])
+	if err != nil {
+		return Adapter{}, fmt.Errorf("invalid help value %q", values["help"])
+	}
+
+	return Adapter{Agent: values["agent"], Dir: values["dir"], Overwrite: overwrite, List: list, Help: help}, nil
 }
 
 func validateAdapter(adapter Adapter) error {
+	if adapter.Help {
+		if adapter.List {
+			return fmt.Errorf("--help cannot be combined with --list")
+		}
+		if adapter.Agent != "" || adapter.Dir != "" || adapter.Overwrite {
+			return fmt.Errorf("--help does not accept adapter parameters")
+		}
+		return nil
+	}
+
 	if adapter.List {
 		if adapter.Agent != "" {
 			return fmt.Errorf("adapter cannot be specified with --list")
@@ -107,6 +129,25 @@ func validateAdapter(adapter Adapter) error {
 	return nil
 }
 
+func printAdapterHelp() {
+	cli.Direct(`IASI Adapter
+
+Usage:
+  iasi adapter [flags] [options] [unnamed] [named-parameters]
+
+Flags: [-s][-v][-d]
+
+Options:
+  --list        List adapters
+  --help        Show help
+
+Parameters:
+  agent         Adapter name
+  dir           Destination directory
+  overwrite     Overwrite existing files
+`)
+}
+
 func listAdapters() error {
 	entries, err := fs.ReadDir(source.Builtin(), "adapters")
 	if err != nil {
@@ -122,7 +163,7 @@ func listAdapters() error {
 	sort.Strings(names)
 
 	for _, name := range names {
-		cli.Info("%s", name)
+		cli.Direct("%s\n", name)
 	}
 	return nil
 }
