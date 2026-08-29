@@ -2,32 +2,18 @@ package source
 
 import (
 	"embed"
-	"fmt"
 	"io/fs"
-	"strings"
 )
 
-//go:generate powershell -NoProfile -ExecutionPolicy Bypass -File ../../scripts/sync-iasi.ps1
-
-//go:embed embedded/VERSION embedded/iasi/**
+// embedded/builtin is generated from the sibling iasi-core repository before every build.
+//
+//go:embed embedded/builtin
 var embedded embed.FS
 
 func Builtin() fs.FS {
-	root, err := fs.Sub(embedded, "embedded/iasi")
+	root, err := fs.Sub(embedded, "embedded/builtin")
 	if err != nil {
 		panic(err)
 	}
 	return root
-}
-
-func Version() (string, error) {
-	data, err := fs.ReadFile(embedded, "embedded/VERSION")
-	if err != nil {
-		return "", fmt.Errorf("read embedded version: %w", err)
-	}
-	version := strings.TrimSpace(string(data))
-	if version == "" {
-		return "", fmt.Errorf("embedded version is empty")
-	}
-	return version, nil
 }
