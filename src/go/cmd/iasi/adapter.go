@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
+	"sort"
 	"strconv"
 
 	"github.com/iasi-org/iasi-cli/internal/builtin"
@@ -16,13 +17,15 @@ type Adapter struct {
 	Agent     string
 	Dir       string
 	Overwrite bool
+	List      bool
 }
 
 var adapterSignature = cli.Signature[Adapter]{
 	Parameters: []cli.Parameter{
-		{Name: "agent", Required: true},
+		{Name: "agent"},
 		{Name: "dir"},
 		{Name: "overwrite", Default: "false"},
+		{Name: "list", Option: "--list"},
 	},
 	Build: buildAdapter,
 }
@@ -38,6 +41,17 @@ func runAdapter(args []string) {
 	adapter, err := cli.ProcessArguments(arguments, adapterSignature)
 	if err != nil {
 		fatal(err)
+	}
+
+	if err := validateAdapter(adapter); err != nil {
+		fatal(err)
+	}
+
+	if adapter.List {
+		if err := listAdapters(); err != nil {
+			fatal(err)
+		}
+		return
 	}
 
 	resolveAdapterDefaults(&adapter)
@@ -64,7 +78,53 @@ func buildAdapter(values map[string]string) (Adapter, error) {
 	if err != nil {
 		return Adapter{}, fmt.Errorf("invalid overwrite value %q", values["overwrite"])
 	}
-	return Adapter{Agent: values["agent"], Dir: values["dir"], Overwrite: overwrite}, nil
+
+	list, err := strconv.ParseBool(values["list"])
+	if err != nil {
+		return Adapter{}, fmt.Errorf("invalid list value %q", values["list"])
+	}
+
+	return Adapter{Agent: values["agent"], Dir: values["dir"], Overwrite: overwrite, List: list}, nil
+}
+
+func validateAdapter(adapter Adapter) error {
+	if adapter.List {
+		if adapter.Agent != "" {
+			return fmt.Errorf("adapter cannot be specified with --list")
+		}
+		if adapter.Dir != "" {
+			return fmt.Errorf("dir cannot be specified with --list")
+		}
+		if adapter.Overwrite {
+			return fmt.Errorf("overwrite cannot be specified with --list")
+		}
+		return nil
+	}
+
+	if adapter.Agent == "" {
+		return fmt.Errorf("argument %q is required", "agent")
+	}
+	return nil
+}
+
+func listAdapters() error {
+	entries, err := fs.ReadDir(source.Builtin(), "adapters")
+	if err != nil {
+		return fmt.Errorf("list builtin adapters: %w", err)
+	}
+
+	names := make([]string, 0, len(entries))
+	for _, entry := range entries {
+		if entry.IsDir() {
+			names = append(names, entry.Name())
+		}
+	}
+	sort.Strings(names)
+
+	for _, name := range names {
+		cli.Info("%s", name)
+	}
+	return nil
 }
 
 func resolveAdapterDefaults(adapter *Adapter) {

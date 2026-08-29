@@ -9,21 +9,27 @@ type adapterArguments struct {
 	Agent     string
 	Dir       string
 	Overwrite bool
+	List      bool
 }
 
 func adapterTestSignature() Signature[adapterArguments] {
 	return Signature[adapterArguments]{
 		Parameters: []Parameter{
-			{Name: "agent", Required: true},
+			{Name: "agent"},
 			{Name: "dir"},
 			{Name: "overwrite", Default: "false"},
+			{Name: "list", Option: "--list"},
 		},
 		Build: func(values map[string]string) (adapterArguments, error) {
 			overwrite, err := strconv.ParseBool(values["overwrite"])
 			if err != nil {
 				return adapterArguments{}, err
 			}
-			return adapterArguments{Agent: values["agent"], Dir: values["dir"], Overwrite: overwrite}, nil
+			list, err := strconv.ParseBool(values["list"])
+			if err != nil {
+				return adapterArguments{}, err
+			}
+			return adapterArguments{Agent: values["agent"], Dir: values["dir"], Overwrite: overwrite, List: list}, nil
 		},
 	}
 }
@@ -48,6 +54,9 @@ func TestProcessArgumentsMapsUnnamedToFirstParameter(t *testing.T) {
 	if result.Overwrite {
 		t.Fatal("overwrite should default to false")
 	}
+	if result.List {
+		t.Fatal("list should default to false")
+	}
 }
 
 func TestProcessArgumentsAcceptsNamedFirstParameter(t *testing.T) {
@@ -63,6 +72,22 @@ func TestProcessArgumentsAcceptsNamedFirstParameter(t *testing.T) {
 
 	if result.Agent != "codex" || result.Dir != "/tmp" || !result.Overwrite {
 		t.Fatalf("unexpected result: %#v", result)
+	}
+}
+
+func TestProcessArgumentsMapsOptionToBooleanParameter(t *testing.T) {
+	arguments, err := ParseArguments([]string{"--list"})
+	if err != nil {
+		t.Fatalf("ParseArguments returned error: %v", err)
+	}
+
+	result, err := ProcessArguments(arguments, adapterTestSignature())
+	if err != nil {
+		t.Fatalf("ProcessArguments returned error: %v", err)
+	}
+
+	if !result.List {
+		t.Fatal("list should be true")
 	}
 }
 
@@ -90,8 +115,20 @@ func TestProcessArgumentsRejectsUnknownParameter(t *testing.T) {
 	}
 }
 
-func TestProcessArgumentsRequiresAgent(t *testing.T) {
-	arguments, err := ParseArguments(nil)
+func TestProcessArgumentsRejectsUnknownOption(t *testing.T) {
+	arguments, err := ParseArguments([]string{"--unknown"})
+	if err != nil {
+		t.Fatalf("ParseArguments returned error: %v", err)
+	}
+
+	_, err = ProcessArguments(arguments, adapterTestSignature())
+	if err == nil {
+		t.Fatal("expected error")
+	}
+}
+
+func TestProcessArgumentsRejectsOptionAsNamedArgument(t *testing.T) {
+	arguments, err := ParseArguments([]string{"list=true"})
 	if err != nil {
 		t.Fatalf("ParseArguments returned error: %v", err)
 	}
