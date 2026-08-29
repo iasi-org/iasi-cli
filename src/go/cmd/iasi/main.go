@@ -4,12 +4,15 @@ package main
 import (
 	"fmt"
 	"os"
+
+	"github.com/iasi-org/iasi-cli/internal/cli"
 )
 
 var version = "dev"
 
 func main() {
-	args := os.Args[1:]
+	options, args := cli.ParseOutputOptions(os.Args[1:])
+	cli.ConfigureOutput(options)
 
 	if len(args) == 0 || args[0] == "--help" || args[0] == "-h" {
 		printHelp()
@@ -18,7 +21,7 @@ func main() {
 
 	switch args[0] {
 	case "version":
-		fmt.Printf("IASI CLI %s\n", version)
+		cli.Info("IASI CLI %s", version)
 		return
 
 	case "adapter":
@@ -26,7 +29,7 @@ func main() {
 		return
 
 	default:
-		fmt.Fprintf(os.Stderr, "iasi: unknown command %q\n", args[0])
+		cli.Error("unknown command %q", args[0])
 		os.Exit(2)
 	}
 }
@@ -45,6 +48,6 @@ Use "iasi <command> --help" for more information about a command.
 }
 
 func fatal(err error) {
-	fmt.Fprintf(os.Stderr, "iasi: %v\n", err)
+	cli.Error("%v", err)
 	os.Exit(2)
 }

@@ -28,6 +28,8 @@ var adapterSignature = cli.Signature[Adapter]{
 }
 
 func runAdapter(args []string) {
+	cli.Debug("Adapter raw arguments: %v", args)
+
 	arguments, err := cli.ParseArguments(args)
 	if err != nil {
 		fatal(err)
@@ -39,16 +41,22 @@ func runAdapter(args []string) {
 	}
 
 	resolveAdapterDefaults(&adapter)
+	cli.Debug("Adapter resolved: agent=%q dir=%q overwrite=%t", adapter.Agent, adapter.Dir, adapter.Overwrite)
 
+	cli.Verbose("Checking adapter %q availability", adapter.Agent)
 	if err := checkAdapterAvailable(adapter); err != nil {
 		fatal(err)
 	}
+	cli.Verbose("Preparing destination %q", adapter.Dir)
 	if err := prepareDestination(adapter); err != nil {
 		fatal(err)
 	}
+	cli.Verbose("Copying adapter %q to %q", adapter.Agent, adapter.Dir)
 	if err := builtin.Copy("adapters/"+adapter.Agent, adapter.Dir, adapter.Overwrite); err != nil {
 		fatal(err)
 	}
+
+	cli.Success("Adapter %q installed in %q", adapter.Agent, adapter.Dir)
 }
 
 func buildAdapter(values map[string]string) (Adapter, error) {
